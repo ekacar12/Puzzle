@@ -230,14 +230,14 @@
 
     .board-grid {
       display: grid;
-      gap: 8px;
+      gap: 7px;
       width: 100%;
     }
 
     .tile {
       position: relative;
       aspect-ratio: 1.15 / 1;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
       border: 2px solid rgba(255, 224, 178, 0.22);
       cursor: pointer;
@@ -262,14 +262,14 @@
 
     .check-badge {
       position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 20px;
-      height: 20px;
+      top: 5px;
+      right: 5px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: var(--gold);
       color: #1c1208;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
       display: flex;
       align-items: center;
@@ -366,6 +366,13 @@
       text-align: center;
     }
 
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
     .primary-btn {
       background: linear-gradient(135deg, #27a86b, #1c8554);
       color: #fff;
@@ -375,13 +382,26 @@
       font-weight: 800;
       font-size: 13px;
       cursor: pointer;
+      flex: 1;
+    }
+
+    .secondary-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f7efe6;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      flex: 1;
     }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="top-strip">
-      <div class="status-dot" id="adStatus">Geçiş Reklamı: Hazır</div>
+      <div class="status-dot" id="adStatus">Reklam Hazır</div>
       <div class="top-actions">
         <button class="pill-btn" id="soundBtn" title="Ses Aç/Kapat">🔊 Ses Açık</button>
         <button class="pill-btn" id="backupBtn">☁️ Yedek</button>
@@ -400,7 +420,7 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Hamle</div>
-        <div class="stat-val" id="movesText">11</div>
+        <div class="stat-val" id="movesText">8</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Kasa</div>
@@ -410,7 +430,7 @@
 
     <div class="scene-card">
       <div class="scene-top">
-        <span class="level-badge" id="tierBadge">ÇIRAK • 3×2</span>
+        <span class="level-badge" id="tierBadge">1. KADEME • 3×2</span>
         <span class="correct-badge" id="correctText">0/6 Doğru</span>
       </div>
       <div class="scene-title" id="sceneTitle">1. Gün Batımı Fiyort &amp; Yelkenli</div>
@@ -432,7 +452,7 @@
 
     <div class="hint-bar">
       <span>Dokun veya seç • Doğru yer yıldızlanır</span>
-      <span id="gridInfo">3×2 Sahne (6 Parça)</span>
+      <span id="gridInfo">3×2 Kasa (6 Parça)</span>
     </div>
 
     <div class="powerups-row">
@@ -447,8 +467,8 @@
     </div>
 
     <button class="reward-btn" id="rewardBtn">
-      <span>🎬 Reklam İzle • Puan &amp; Kasa Kazan</span>
-      <span class="reward-chip">+500 Puan 🎁</span>
+      <span id="rewardBtnLabel">🎬 Reklam İzle (+1 Hamle)</span>
+      <span class="reward-chip" id="rewardChip">+1 Hamle 🎁</span>
     </button>
   </div>
 
@@ -457,7 +477,9 @@
       <h3 id="modalTitle" style="margin:0;color:#ffd670;">Hedef Sahne</h3>
       <canvas id="modalCanvas" width="300" height="200" style="width:100%;border-radius:12px;display:none;"></canvas>
       <p id="modalDesc" style="margin:0;font-size:13px;color:#e7dacb;line-height:1.45;"></p>
-      <button class="primary-btn" id="modalCloseBtn">Tamam</button>
+      <div class="modal-actions" id="modalActions">
+        <button class="primary-btn" id="modalCloseBtn">Tamam</button>
+      </div>
     </div>
   </div>
 
@@ -500,9 +522,7 @@
         osc.start(now);
         osc.stop(now + duration + 0.02);
       },
-      tap() {
-        this.tone(240, 0.07, "triangle", 0.14, 0);
-      },
+      tap() { this.tone(240, 0.07, "triangle", 0.14, 0); },
       swap() {
         this.tone(310, 0.09, "sine", 0.14, 0);
         this.tone(420, 0.09, "sine", 0.12, 0.05);
@@ -521,26 +541,29 @@
         this.tone(587.33, 0.12, "sine", 0.16, 0);
         this.tone(880.0, 0.22, "sine", 0.18, 0.1);
       },
-      warn() {
-        this.tone(190, 0.16, "sawtooth", 0.08, 0);
-      }
+      warn() { this.tone(190, 0.16, "sawtooth", 0.08, 0); }
     };
 
     const state = {
       level: 1,
       score: 0,
-      moves: 11,
+      moves: 8,
       stars: 0,
       selectedIndex: null,
       tiles: []
     };
 
     function getLevelConfig(lvl) {
-      const cols = lvl <= 4 ? 3 : (lvl <= 12 ? 3 : 4);
-      const rows = lvl <= 4 ? 2 : (lvl <= 12 ? 3 : 3);
-      const tier = lvl <= 5 ? "ÇIRAK" : (lvl <= 15 ? "USTA" : "MİMAR");
-      const baseMoves = cols * rows + 5;
-      return { cols, rows, tier, baseMoves };
+      if (lvl <= 10) {
+        return { tier: "1. KADEME", cols: 3, rows: 2, startMoves: 8, adBonusMoves: 1 };
+      }
+      if (lvl <= 20) {
+        return { tier: "2. KADEME", cols: 3, rows: 3, startMoves: 11, adBonusMoves: 1 };
+      }
+      if (lvl <= 30) {
+        return { tier: "3. KADEME", cols: 4, rows: 4, startMoves: 19, adBonusMoves: 2 };
+      }
+      return { tier: "4. KADEME", cols: 5, rows: 5, startMoves: 28, adBonusMoves: 2 };
     }
 
     function drawPiece(canvas, sceneIdx, pieceIdx, cols, rows) {
@@ -638,10 +661,44 @@
       } while (arr.every((v, idx) => v === idx));
 
       state.level = lvl;
-      state.moves = cfg.baseMoves;
+      state.moves = cfg.startMoves;
       state.selectedIndex = null;
       state.tiles = arr;
       render();
+    }
+
+    function grantRewardedMoves() {
+      const cfg = getLevelConfig(state.level);
+      state.moves += cfg.adBonusMoves;
+      document.getElementById("adStatus").textContent = `+${cfg.adBonusMoves} Hamle Eklendi`;
+      SoundFX.reward();
+      closeModal();
+      render();
+    }
+
+    function onOutOfMoves() {
+      const cfg = getLevelConfig(state.level);
+      SoundFX.warn();
+      openModal(
+        "Hamle Sınırı Doldu",
+        `Reklam izleyerek +${cfg.adBonusMoves} hamle kazanıp kaldığınız yerden devam edebilir veya bölümü yeniden başlatabilirsiniz.`,
+        false,
+        [
+          {
+            label: `🎬 Reklam İzle (+${cfg.adBonusMoves} Hamle)`,
+            className: "primary-btn",
+            onClick: () => grantRewardedMoves()
+          },
+          {
+            label: "Yeniden Başla",
+            className: "secondary-btn",
+            onClick: () => {
+              closeModal();
+              setupLevel(state.level);
+            }
+          }
+        ]
+      );
     }
 
     function swapTiles(a, b) {
@@ -662,16 +719,28 @@
         state.score += 300;
         state.stars = Math.min(9, state.stars + 1);
         SoundFX.win();
-        openModal("Bölüm Tamamlandı!", `${state.level}. bölümü tamamladınız! +300 puan ve +1 yıldız kazandınız.`, false);
         const nextLvl = state.level < 50 ? state.level + 1 : 1;
-        setTimeout(() => setupLevel(nextLvl), 400);
+        openModal(
+          "Bölüm Tamamlandı!",
+          `${state.level}. bölümü tamamladınız! +300 puan ve +1 yıldız kazandınız.`,
+          false,
+          [
+            {
+              label: "Sonraki Bölüm",
+              className: "primary-btn",
+              onClick: () => {
+                closeModal();
+                setupLevel(nextLvl);
+              }
+            }
+          ]
+        );
         return;
       }
 
       if (state.moves <= 0) {
-        SoundFX.warn();
-        openModal("Hamle Bitti", "Reklam izleyerek +500 puan kazanabilir veya bölümü yeniden başlatabilirsiniz.", false);
-        setupLevel(state.level);
+        render();
+        onOutOfMoves();
         return;
       }
 
@@ -691,7 +760,9 @@
       document.getElementById("tierBadge").textContent = `${cfg.tier} • ${cfg.cols}×${cfg.rows}`;
       document.getElementById("correctText").textContent = `${correctCount}/${total} Doğru`;
       document.getElementById("sceneTitle").textContent = `${state.level}. ${scene.title}`;
-      document.getElementById("gridInfo").textContent = `${cfg.cols}×${cfg.rows} Sahne (${total} Parça)`;
+      document.getElementById("gridInfo").textContent = `${cfg.cols}×${cfg.rows} Kasa (${total} Parça)`;
+      document.getElementById("rewardBtnLabel").textContent = `🎬 Reklam İzle (+${cfg.adBonusMoves} Hamle)`;
+      document.getElementById("rewardChip").textContent = `+${cfg.adBonusMoves} Hamle 🎁`;
 
       drawPiece(document.getElementById("thumbCanvas"), state.level, 0, 1, 1);
 
@@ -739,7 +810,7 @@
       });
     }
 
-    function openModal(title, desc, showFullScene) {
+    function openModal(title, desc, showFullScene, buttons = null) {
       document.getElementById("modalTitle").textContent = title;
       document.getElementById("modalDesc").textContent = desc;
       const mc = document.getElementById("modalCanvas");
@@ -749,7 +820,29 @@
       } else {
         mc.style.display = "none";
       }
+
+      const actionsEl = document.getElementById("modalActions");
+      actionsEl.innerHTML = "";
+      const list = buttons && buttons.length > 0
+        ? buttons
+        : [{ label: "Tamam", className: "primary-btn", onClick: () => closeModal() }];
+
+      list.forEach((btnCfg) => {
+        const b = document.createElement("button");
+        b.className = btnCfg.className || "primary-btn";
+        b.textContent = btnCfg.label;
+        b.addEventListener("click", () => {
+          SoundFX.tap();
+          btnCfg.onClick();
+        });
+        actionsEl.appendChild(b);
+      });
+
       document.getElementById("modalBackdrop").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("modalBackdrop").classList.remove("open");
     }
 
     document.getElementById("soundBtn").addEventListener("click", () => {
@@ -761,11 +854,6 @@
       } else {
         btn.textContent = "🔇 Kapalı";
       }
-    });
-
-    document.getElementById("modalCloseBtn").addEventListener("click", () => {
-      SoundFX.tap();
-      document.getElementById("modalBackdrop").classList.remove("open");
     });
 
     document.getElementById("goalBtn").addEventListener("click", () => {
@@ -783,7 +871,7 @@
     document.getElementById("hintBtn").addEventListener("click", () => {
       if (state.score < 250) {
         SoundFX.warn();
-        openModal("Yetersiz Puan", "İpucu almak için 250 puana ihtiyacınız var. Reklam izleyerek puan kazanabilirsiniz.", false);
+        openModal("Yetersiz Puan", "İpucu almak için 250 puana ihtiyacınız var.", false);
         return;
       }
       const wrongIdx = state.tiles.findIndex((v, i) => v !== i);
@@ -809,12 +897,7 @@
     });
 
     document.getElementById("rewardBtn").addEventListener("click", () => {
-      state.score += 500;
-      state.moves += 2;
-      state.stars = Math.min(9, state.stars + 1);
-      document.getElementById("adStatus").textContent = "Ödül Verildi (+500 Puan)";
-      SoundFX.reward();
-      render();
+      grantRewardedMoves();
     });
 
     document.getElementById("backupBtn").addEventListener("click", () => {
