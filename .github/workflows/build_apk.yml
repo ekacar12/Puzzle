@@ -5,105 +5,27 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-
-      - name: Create platform scaffolding if missing
-        run: |
-          if [ ! -d "android" ]; then
-            flutter create --org com.erdalkacar.puzzle --project-name puzzle_ahsap_yapboz .
-          fi
-
-      - name: Align Gradle, AGP and Kotlin versions
-        run: |
-          python3 - << 'EOF'
-          import re
-
-          kotlin_ver = "2.0.21"
-          agp_ver = "8.3.2"
-
-          wrapper_path = "android/gradle/wrapper/gradle-wrapper.properties"
-          with open(wrapper_path, "r", encoding="utf-8") as f:
-              text = f.read()
-          lines = [
-              "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-all.zip"
-              if line.startswith("distributionUrl=") else line
-              for line in text.splitlines()
-          ]
-          with open(wrapper_path, "w", encoding="utf-8") as f:
-              f.write("\n".join(lines) + "\n")
-
-          settings_path = "android/settings.gradle"
-          try:
-              with open(settings_path, "r", encoding="utf-8") as f:
-                  s = f.read()
-              s = re.sub(
-                  r'(id\s+["\']com\.android\.application["\']\s+version\s+["\'])[^"\']+(["\'])',
-                  rf'\g<1>{agp_ver}\2',
-                  s
-              )
-              s = re.sub(
-                  r'(id\s+["\']org\.jetbrains\.kotlin\.android["\']\s+version\s+["\'])[^"\']+(["\'])',
-                  rf'\g<1>{kotlin_ver}\2',
-                  s
-              )
-              with open(settings_path, "w", encoding="utf-8") as f:
-                  f.write(s)
-          except FileNotFoundError:
-              pass
-
-          build_path = "android/build.gradle"
-          try:
-              with open(build_path, "r", encoding="utf-8") as f:
-                  b = f.read()
-              if "ext.kotlin_version" in b:
-                  b = re.sub(
-                      r"ext\.kotlin_version\s*=\s*['\"][^'\"]+['\"]",
-                      f"ext.kotlin_version = '{kotlin_ver}'",
-                      b
-                  )
-              else:
-                  b = f"buildscript {{\n    ext.kotlin_version = '{kotlin_ver}'\n}}\n" + b
-              with open(build_path, "w", encoding="utf-8") as f:
-                  f.write(b)
-          except FileNotFoundError:
-              pass
-          EOF
-
-      - name: Configure AndroidManifest for AdMob test App ID
-        run: |
-          python3 - << 'EOF'
-          path = "android/app/src/main/AndroidManifest.xml"
-          with open(path, "r", encoding="utf-8") as f:
-              content = f.read()
-
-          if "com.google.android.gms.ads.APPLICATION_ID" not in content:
-              meta = '''        <meta-data
-              android:name="com.google.android.gms.ads.APPLICATION_ID"
-              android:value="ca-app-pub-3940256099942544~3347511713" />
-          </application>'''
-              content = content.replace("</application>", meta, 1)
-
-          with open(path, "w", encoding="utf-8") as f:
-              f.write(content)
-          EOF
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
@@ -111,8 +33,25 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Prepare APK copy
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/ahsap-ve-epoksi-puzzle.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: puzzle-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: puzzle-apk
+          path: dist/ahsap-ve-epoksi-puzzle.apk
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-apk
+          name: "Ahşap ve Epoksi Puzzle - Güncel APK"
+          body: "Otomatik derlenen en güncel Android APK sürümü."
+          files: dist/ahsap-ve-epoksi-puzzle.apk
+          make_latest: true
+          draft: false
+          prerelease: false
