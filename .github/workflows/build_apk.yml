@@ -1,0 +1,56 @@
+name: Build Puzzle APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Create platform scaffolding if missing
+        run: |
+          if [ ! -d "android" ]; then
+            flutter create --org com.erdalkacar.puzzle --project-name puzzle_ahsap_yapboz .
+          fi
+
+      - name: Configure AndroidManifest for AdMob test App ID
+        run: |
+          python3 - << 'EOF'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          if "com.google.android.gms.ads.APPLICATION_ID" not in content:
+              meta = '''        <meta-data
+              android:name="com.google.android.gms.ads.APPLICATION_ID"
+              android:value="ca-app-pub-3940256099942544~3347511713" />
+          </application>'''
+              content = content.replace("</application>", meta, 1)
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(content)
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzle-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
