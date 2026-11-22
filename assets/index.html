@@ -491,8 +491,11 @@
       { title: "Kuzey Fiyordu & Ahşap Köprü", skyTop: "#2c6e78", skyBot: "#8ec5c2", waterTop: "#15636b", waterBot: "#0b3842", woodA: "#be7d43", woodB: "#76431c", pine: "#152d26", sail: "#f7efe6", ring: "#73d2c8" }
     ];
 
+    
     const SoundFX = {
       ctx: null,
+      masterGain: null,
+      compressor: null,
       enabled: true,
       ensureContext() {
         if (!this.enabled) return null;
@@ -500,13 +503,26 @@
         if (!AudioCtx) return null;
         if (!this.ctx) {
           this.ctx = new AudioCtx();
+
+          this.compressor = this.ctx.createDynamicsCompressor();
+          this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+          this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
+          this.compressor.ratio.setValueAtTime(6, this.ctx.currentTime);
+          this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+          this.compressor.release.setValueAtTime(0.18, this.ctx.currentTime);
+
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.setValueAtTime(1.45, this.ctx.currentTime);
+
+          this.compressor.connect(this.masterGain);
+          this.masterGain.connect(this.ctx.destination);
         }
         if (this.ctx.state === "suspended") {
           this.ctx.resume().catch(() => {});
         }
         return this.ctx;
       },
-      tone(freq, duration, type = "sine", gainVal = 0.14, delay = 0) {
+      tone(freq, duration, type = "sine", gainVal = 0.45, delay = 0, endFreq = null) {
         const ctx = this.ensureContext();
         if (!ctx) return;
         const now = ctx.currentTime + delay;
@@ -514,34 +530,41 @@
         const gain = ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(gainVal, now + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        if (endFreq !== null) {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), now + duration);
+        }
+        gain.gain.setValueAtTime(0.0008, now);
+        gain.gain.exponentialRampToValueAtTime(Math.min(0.85, gainVal), now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + duration);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.compressor);
         osc.start(now);
-        osc.stop(now + duration + 0.02);
+        osc.stop(now + duration + 0.025);
       },
-      tap() { this.tone(240, 0.07, "triangle", 0.14, 0); },
+      tap() {
+        this.tone(260, 0.08, "triangle", 0.48, 0, 175);
+      },
       swap() {
-        this.tone(310, 0.09, "sine", 0.14, 0);
-        this.tone(420, 0.09, "sine", 0.12, 0.05);
+        this.tone(330, 0.09, "triangle", 0.46, 0, 390);
+        this.tone(460, 0.1, "sine", 0.48, 0.045, 520);
       },
       correct() {
-        this.tone(523.25, 0.12, "sine", 0.16, 0);
-        this.tone(659.25, 0.16, "sine", 0.16, 0.07);
+        this.tone(523.25, 0.13, "triangle", 0.52, 0);
+        this.tone(659.25, 0.18, "sine", 0.55, 0.065);
       },
       win() {
-        this.tone(523.25, 0.14, "triangle", 0.18, 0);
-        this.tone(659.25, 0.14, "triangle", 0.18, 0.11);
-        this.tone(783.99, 0.14, "triangle", 0.18, 0.22);
-        this.tone(1046.5, 0.28, "sine", 0.2, 0.33);
+        this.tone(523.25, 0.15, "triangle", 0.56, 0);
+        this.tone(659.25, 0.15, "triangle", 0.56, 0.1);
+        this.tone(783.99, 0.15, "triangle", 0.56, 0.2);
+        this.tone(1046.5, 0.32, "sine", 0.62, 0.3);
       },
       reward() {
-        this.tone(587.33, 0.12, "sine", 0.16, 0);
-        this.tone(880.0, 0.22, "sine", 0.18, 0.1);
+        this.tone(587.33, 0.13, "triangle", 0.52, 0);
+        this.tone(880.0, 0.24, "sine", 0.58, 0.09);
       },
-      warn() { this.tone(190, 0.16, "sawtooth", 0.08, 0); }
+      warn() {
+        this.tone(210, 0.18, "triangle", 0.45, 0, 145);
+      }
     };
 
     const state = {
