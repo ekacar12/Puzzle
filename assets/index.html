@@ -576,18 +576,19 @@
       tiles: []
     };
 
-    function getLevelConfig(lvl) {
+        function getLevelConfig(lvl) {
       if (lvl <= 10) {
-        return { tier: "1. KADEME", cols: 3, rows: 2, startMoves: 8, adBonusMoves: 1 };
+        return { tier: "1. KADEME", cols: 3, rows: 2, startMoves: 5, adBonusMoves: 1 };
       }
       if (lvl <= 20) {
-        return { tier: "2. KADEME", cols: 3, rows: 3, startMoves: 11, adBonusMoves: 1 };
+        return { tier: "2. KADEME", cols: 3, rows: 3, startMoves: 8, adBonusMoves: 1 };
       }
       if (lvl <= 30) {
-        return { tier: "3. KADEME", cols: 4, rows: 4, startMoves: 19, adBonusMoves: 2 };
+        return { tier: "3. KADEME", cols: 4, rows: 4, startMoves: 14, adBonusMoves: 2 };
       }
-      return { tier: "4. KADEME", cols: 5, rows: 5, startMoves: 28, adBonusMoves: 2 };
+      return { tier: "4. KADEME", cols: 5, rows: 5, startMoves: 24, adBonusMoves: 2 };
     }
+
 
     function drawPiece(canvas, sceneIdx, pieceIdx, cols, rows) {
       const ctx = canvas.getContext("2d");
