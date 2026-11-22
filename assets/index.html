@@ -17,8 +17,6 @@
       --gold: #f5b942;
       --text-main: #f7efe6;
       --text-muted: #b8a592;
-      --accent-green: #27a86b;
-      --accent-blue: #2788e8;
     }
 
     * {
@@ -50,11 +48,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       background: var(--panel-bg);
       border: 1px solid var(--panel-border);
       border-radius: 14px;
-      padding: 8px 12px;
+      padding: 8px 10px;
       font-size: 12px;
     }
 
@@ -78,12 +76,18 @@
       flex-shrink: 0;
     }
 
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .pill-btn {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.14);
       color: var(--text-main);
       border-radius: 999px;
-      padding: 6px 12px;
+      padding: 6px 10px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -378,9 +382,10 @@
   <div class="app">
     <div class="top-strip">
       <div class="status-dot" id="adStatus">Geçiş Reklamı: Hazır</div>
-      <div style="display:flex; gap:6px;">
-        <button class="pill-btn" id="backupBtn">☁️ Yedekle</button>
-        <button class="pill-btn gold" id="removeAdsBtn">Reklamları Kaldır</button>
+      <div class="top-actions">
+        <button class="pill-btn" id="soundBtn" title="Ses Aç/Kapat">🔊 Ses Açık</button>
+        <button class="pill-btn" id="backupBtn">☁️ Yedek</button>
+        <button class="pill-btn gold" id="removeAdsBtn">Reklam Kaldır</button>
       </div>
     </div>
 
@@ -427,7 +432,7 @@
 
     <div class="hint-bar">
       <span>Dokun veya seç • Doğru yer yıldızlanır</span>
-      <span id="gridInfo">3×2 Kasa (6 Parça)</span>
+      <span id="gridInfo">3×2 Sahne (6 Parça)</span>
     </div>
 
     <div class="powerups-row">
@@ -464,6 +469,63 @@
       { title: "Kuzey Fiyordu & Ahşap Köprü", skyTop: "#2c6e78", skyBot: "#8ec5c2", waterTop: "#15636b", waterBot: "#0b3842", woodA: "#be7d43", woodB: "#76431c", pine: "#152d26", sail: "#f7efe6", ring: "#73d2c8" }
     ];
 
+    const SoundFX = {
+      ctx: null,
+      enabled: true,
+      ensureContext() {
+        if (!this.enabled) return null;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        if (!this.ctx) {
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === "suspended") {
+          this.ctx.resume().catch(() => {});
+        }
+        return this.ctx;
+      },
+      tone(freq, duration, type = "sine", gainVal = 0.14, delay = 0) {
+        const ctx = this.ensureContext();
+        if (!ctx) return;
+        const now = ctx.currentTime + delay;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(gainVal, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+      },
+      tap() {
+        this.tone(240, 0.07, "triangle", 0.14, 0);
+      },
+      swap() {
+        this.tone(310, 0.09, "sine", 0.14, 0);
+        this.tone(420, 0.09, "sine", 0.12, 0.05);
+      },
+      correct() {
+        this.tone(523.25, 0.12, "sine", 0.16, 0);
+        this.tone(659.25, 0.16, "sine", 0.16, 0.07);
+      },
+      win() {
+        this.tone(523.25, 0.14, "triangle", 0.18, 0);
+        this.tone(659.25, 0.14, "triangle", 0.18, 0.11);
+        this.tone(783.99, 0.14, "triangle", 0.18, 0.22);
+        this.tone(1046.5, 0.28, "sine", 0.2, 0.33);
+      },
+      reward() {
+        this.tone(587.33, 0.12, "sine", 0.16, 0);
+        this.tone(880.0, 0.22, "sine", 0.18, 0.1);
+      },
+      warn() {
+        this.tone(190, 0.16, "sawtooth", 0.08, 0);
+      }
+    };
+
     const state = {
       level: 1,
       score: 0,
@@ -495,14 +557,12 @@
       ctx.save();
       ctx.translate(-col * w, -row * h);
 
-      // Gökyüzü ve ahşap üst katman
       const skyGrad = ctx.createLinearGradient(0, 0, 0, fullH * 0.52);
       skyGrad.addColorStop(0, scene.skyTop);
       skyGrad.addColorStop(1, scene.skyBot);
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, fullW, fullH * 0.52);
 
-      // Ahşap damar çizgileri
       ctx.strokeStyle = scene.woodA;
       ctx.lineWidth = 2;
       for (let y = 12; y < fullH * 0.52; y += 14) {
@@ -512,14 +572,12 @@
         ctx.stroke();
       }
 
-      // Epoksi su yüzeyi
       const seaGrad = ctx.createLinearGradient(0, fullH * 0.5, 0, fullH);
       seaGrad.addColorStop(0, scene.waterTop);
       seaGrad.addColorStop(1, scene.waterBot);
       ctx.fillStyle = seaGrad;
       ctx.fillRect(0, fullH * 0.5, fullW, fullH * 0.5);
 
-      // Fiyort kıyı şeridi ve çam ağaçları
       ctx.fillStyle = scene.woodB;
       ctx.beginPath();
       ctx.moveTo(0, fullH * 0.52);
@@ -541,7 +599,6 @@
         ctx.fill();
       }
 
-      // Yelkenli silüeti
       const bx = fullW * 0.66;
       const by = fullH * 0.62;
       ctx.fillStyle = scene.sail;
@@ -555,7 +612,6 @@
       ctx.fillStyle = scene.woodB;
       ctx.fillRect(bx - 14, by - 4, 44, 7);
 
-      // Dekoratif epoksi halkaları
       ctx.strokeStyle = scene.ring;
       ctx.lineWidth = 2.5;
       for (let r = 0; r < 5; r++) {
@@ -574,7 +630,6 @@
       const total = cfg.cols * cfg.rows;
       const arr = Array.from({ length: total }, (_, i) => i);
 
-      // En az birkaç parçanın karışık olmasını sağla
       do {
         for (let i = arr.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -597,12 +652,16 @@
 
       if (state.tiles[b] === b) {
         state.score += 100;
+        SoundFX.correct();
+      } else {
+        SoundFX.swap();
       }
 
       const solved = state.tiles.every((val, idx) => val === idx);
       if (solved) {
         state.score += 300;
         state.stars = Math.min(9, state.stars + 1);
+        SoundFX.win();
         openModal("Bölüm Tamamlandı!", `${state.level}. bölümü tamamladınız! +300 puan ve +1 yıldız kazandınız.`, false);
         const nextLvl = state.level < 50 ? state.level + 1 : 1;
         setTimeout(() => setupLevel(nextLvl), 400);
@@ -610,6 +669,7 @@
       }
 
       if (state.moves <= 0) {
+        SoundFX.warn();
         openModal("Hamle Bitti", "Reklam izleyerek +500 puan kazanabilir veya bölümü yeniden başlatabilirsiniz.", false);
         setupLevel(state.level);
         return;
@@ -664,9 +724,11 @@
         tile.addEventListener("click", () => {
           if (state.selectedIndex === null) {
             state.selectedIndex = idx;
+            SoundFX.tap();
             render();
           } else if (state.selectedIndex === idx) {
             state.selectedIndex = null;
+            SoundFX.tap();
             render();
           } else {
             swapTiles(state.selectedIndex, idx);
@@ -690,22 +752,37 @@
       document.getElementById("modalBackdrop").classList.add("open");
     }
 
+    document.getElementById("soundBtn").addEventListener("click", () => {
+      SoundFX.enabled = !SoundFX.enabled;
+      const btn = document.getElementById("soundBtn");
+      if (SoundFX.enabled) {
+        btn.textContent = "🔊 Ses Açık";
+        SoundFX.correct();
+      } else {
+        btn.textContent = "🔇 Kapalı";
+      }
+    });
+
     document.getElementById("modalCloseBtn").addEventListener("click", () => {
+      SoundFX.tap();
       document.getElementById("modalBackdrop").classList.remove("open");
     });
 
     document.getElementById("goalBtn").addEventListener("click", () => {
+      SoundFX.tap();
       const scene = SCENES[(state.level - 1) % SCENES.length];
       openModal("Hedef Sahne", `${state.level}. ${scene.title} — tüm parçaları doğru konumuna yerleştirin.`, true);
     });
     document.getElementById("thumbBox").addEventListener("click", () => document.getElementById("goalBtn").click());
 
     document.getElementById("dailyBtn").addEventListener("click", () => {
+      SoundFX.tap();
       openModal("Günlük Bulmaca", "Bugünün özel ahşap ve epoksi sahnesi aktif! Bölümü tamamlayarak ekstra yıldız toplayabilirsiniz.", false);
     });
 
     document.getElementById("hintBtn").addEventListener("click", () => {
       if (state.score < 250) {
+        SoundFX.warn();
         openModal("Yetersiz Puan", "İpucu almak için 250 puana ihtiyacınız var. Reklam izleyerek puan kazanabilirsiniz.", false);
         return;
       }
@@ -714,17 +791,20 @@
         const targetPos = state.tiles.indexOf(wrongIdx);
         state.score -= 250;
         [state.tiles[wrongIdx], state.tiles[targetPos]] = [state.tiles[targetPos], state.tiles[wrongIdx]];
+        SoundFX.correct();
         render();
       }
     });
 
     document.getElementById("extraMoveBtn").addEventListener("click", () => {
       if (state.score < 350) {
+        SoundFX.warn();
         openModal("Yetersiz Puan", "+2 Hamle için 350 puana ihtiyacınız var.", false);
         return;
       }
       state.score -= 350;
       state.moves += 2;
+      SoundFX.correct();
       render();
     });
 
@@ -733,14 +813,17 @@
       state.moves += 2;
       state.stars = Math.min(9, state.stars + 1);
       document.getElementById("adStatus").textContent = "Ödül Verildi (+500 Puan)";
+      SoundFX.reward();
       render();
     });
 
     document.getElementById("backupBtn").addEventListener("click", () => {
+      SoundFX.tap();
       openModal("İlerleme Kaydedildi", `Bölüm ${state.level}/50, ${state.score} Puan ve ${state.stars}/9 Yıldız yerel olarak kaydedildi.`, false);
     });
 
     document.getElementById("removeAdsBtn").addEventListener("click", () => {
+      SoundFX.tap();
       openModal("Reklam Seçenekleri", "Test ve yayın sürümlerinde reklam kaldırma seçeneği mağaza yapılandırmasıyla bağlanabilir.", false);
     });
 
