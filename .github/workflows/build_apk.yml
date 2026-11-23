@@ -67,6 +67,8 @@ jobs:
             --build-number=1 \
             --build-name=1.0.0
           ls -lh build/app/outputs/bundle/release/app-release.aab
+            mkdir -p dist
+            cp build/app/outputs/bundle/release/app-release.aab dist/ahsap-ve-epoksi-puzzle.aab
 
       - name: Build release APK
         run: flutter build apk --release
@@ -79,7 +81,13 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: puzzle-apk
+          name: puzzle-apk                - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzle-aab
+          path: dist/ahsap-ve-epoksi-puzzle.aab
+          if-no-files-found: error
+
           path: dist/ahsap-ve-epoksi-puzzle.apk
           if-no-files-found: error
 
