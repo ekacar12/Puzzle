@@ -44,18 +44,28 @@ jobs:
               if (fs.existsSync(p)) {
                 let s = fs.readFileSync(p, "utf8");
                 if (!s.includes("abortOnError")) {
-                  s = s.replace("android {", "android {\n    lint {\n        abortOnError = false\n        checkReleaseBuilds = false\n    }");
+                  s = s.replace("android {", "android {\n  lint {\n    abortOnError = false\n    checkReleaseBuilds = false\n  }");
                   fs.writeFileSync(p, s, "utf8");
                 }
               }
             }
           '
-      - name: Decode release keystore
+
+      - name: Decode release keystore and create key.properties
         env:
           KEY_BASE64: ${{ secrets.KEY_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "$KEY_BASE64" | tr -d '[:space:]' | base64 -d > android/app/release-key.jks
           ls -lh android/app/release-key.jks
+          cat <<EOF > android/key.properties
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=release-key.jks
+          EOF
 
       - name: Build signed release AAB
         env:
@@ -67,8 +77,8 @@ jobs:
             --build-number=1 \
             --build-name=1.0.0
           ls -lh build/app/outputs/bundle/release/app-release.aab
-            mkdir -p dist
-            cp build/app/outputs/bundle/release/app-release.aab dist/ahsap-ve-epoksi-puzzle.aab
+          mkdir -p dist
+          cp build/app/outputs/bundle/release/app-release.aab dist/ahsap-ve-epoksi-puzzle.aab
 
       - name: Build release APK
         run: flutter build apk --release
@@ -78,16 +88,17 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/ahsap-ve-epoksi-puzzle.apk
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: puzzle-apk                - name: Upload AAB artifact
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: puzzle-aab
           path: dist/ahsap-ve-epoksi-puzzle.aab
           if-no-files-found: error
 
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzle-apk
           path: dist/ahsap-ve-epoksi-puzzle.apk
           if-no-files-found: error
 
