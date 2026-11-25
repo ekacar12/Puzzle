@@ -639,7 +639,9 @@
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
-      const scene = SCENES[(sceneIdx - 1) % SCENES.length];
+            const sceneIndex = ((sceneIdx - 1) % SCENES.length + SCENES.length) % SCENES.length;
+      const scene = SCENES[sceneIndex];
+      const lvlNum = (typeof state !== "undefined" && state.level) ? state.level : sceneIdx;
 
       const col = pieceIdx % cols;
       const row = Math.floor(pieceIdx / cols);
@@ -649,70 +651,180 @@
       ctx.save();
       ctx.translate(-col * w, -row * h);
 
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, fullH * 0.52);
-      skyGrad.addColorStop(0, scene.skyTop);
-      skyGrad.addColorStop(1, scene.skyBot);
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, fullW, fullH * 0.52);
+      // 1. Her bölüm için farklı renk tonları (HSL kaydırmalı benzersiz palet)
+      const baseHue = (lvlNum * 47 + sceneIndex * 29) % 360;
+      const secondHue = (baseHue + 135 + (lvlNum % 5) * 18) % 360;
+      const accentHue = (baseHue + 42) % 360;
 
-      ctx.strokeStyle = scene.woodA;
+      const cTop1 = `hsl(${baseHue}, 68%, 48%)`;
+      const cTop2 = `hsl(${(baseHue + 18) % 360}, 74%, 64%)`;
+      const cBot1 = `hsl(${secondHue}, 65%, 42%)`;
+      const cBot2 = `hsl(${(secondHue + 22) % 360}, 72%, 22%)`;
+      const cPattern = `hsla(${baseHue}, 55%, 18%, 0.45)`;
+      const cShapeDark = `hsl(${(baseHue + 15) % 360}, 52%, 20%)`;
+      const cShapeWarm = `hsl(${accentHue}, 75%, 36%)`;
+      const cHighlight = `hsl(${(baseHue + 180) % 360}, 85%, 88%)`;
+      const cRing = `hsl(${accentHue}, 92%, 72%)`;
+
+      // 2. Bölüme göre değişen ufuk ve epoksi çizgisi
+      const horizonY = fullH * (0.34 + ((lvlNum * 11 + sceneIndex * 7) % 28) / 100);
+
+      const topGrad = ctx.createLinearGradient(0, 0, fullW * ((lvlNum % 2 === 0) ? 0.2 : 0.8), horizonY);
+      topGrad.addColorStop(0, cTop1);
+      topGrad.addColorStop(1, cTop2);
+      ctx.fillStyle = topGrad;
+      ctx.fillRect(0, 0, fullW, horizonY);
+
+      const botGrad = ctx.createLinearGradient(0, horizonY, 0, fullH);
+      botGrad.addColorStop(0, cBot1);
+      botGrad.addColorStop(1, cBot2);
+      ctx.fillStyle = botGrad;
+      ctx.fillRect(0, horizonY, fullW, fullH - horizonY);
+
+      // 3. Her bölümde değişen ARKA PLAN DESENİ (4 farklı desen modu)
+      const patternMode = lvlNum % 4;
+      ctx.strokeStyle = cPattern;
       ctx.lineWidth = 2;
-      for (let y = 12; y < fullH * 0.52; y += 14) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.bezierCurveTo(fullW * 0.33, y - 5, fullW * 0.66, y + 5, fullW, y);
-        ctx.stroke();
+
+      if (patternMode === 0) {
+        // Desen A: Dalgalı ahşap damarları
+        const gap = 11 + (lvlNum % 5) * 2;
+        for (let y = 10; y < horizonY; y += gap) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.bezierCurveTo(fullW * 0.33, y - 8, fullW * 0.67, y + 8, fullW, y);
+          ctx.stroke();
+        }
+      } else if (patternMode === 1) {
+        // Desen B: Çapraz epoksi / doku çizgileri
+        const step = 18 + (lvlNum % 4) * 4;
+        for (let x = -fullH; x < fullW + fullH; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x + horizonY * 0.85, horizonY);
+          ctx.stroke();
+        }
+      } else if (patternMode === 2) {
+        // Desen C: Eş merkezli dalga / halka dokusu
+        const cx = fullW * (0.25 + ((lvlNum * 17) % 50) / 100);
+        const cy = horizonY * 0.6;
+        for (let rad = 18; rad < Math.max(fullW, fullH) * 0.7; rad += 16) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else {
+        // Desen D: Izgara / kafes epoksi dokusu
+        const cell = 16 + (lvlNum % 4) * 3;
+        for (let x = 0; x < fullW; x += cell) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, fullH);
+          ctx.stroke();
+        }
+        for (let y = 0; y < fullH; y += cell) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(fullW, y);
+          ctx.stroke();
+        }
       }
 
-      const seaGrad = ctx.createLinearGradient(0, fullH * 0.5, 0, fullH);
-      seaGrad.addColorStop(0, scene.waterTop);
-      seaGrad.addColorStop(1, scene.waterBot);
-      ctx.fillStyle = seaGrad;
-      ctx.fillRect(0, fullH * 0.5, fullW, fullH * 0.5);
-
-      ctx.fillStyle = scene.woodB;
+      // 4. Bölüme göre değişen ZEMİN / KÖPRÜ / KÜTLE şekli
+      ctx.fillStyle = cShapeWarm;
       ctx.beginPath();
-      ctx.moveTo(0, fullH * 0.52);
-      ctx.lineTo(fullW * 0.45, fullH * 0.45);
-      ctx.lineTo(fullW * 0.72, fullH * 0.58);
-      ctx.lineTo(0, fullH * 0.68);
+      const landMode = (lvlNum + sceneIndex) % 4;
+      if (landMode === 0) {
+        ctx.moveTo(0, fullH * 0.48);
+        ctx.lineTo(fullW * 0.55, fullH * 0.42);
+        ctx.lineTo(fullW * 0.78, fullH * 0.58);
+        ctx.lineTo(0, fullH * 0.70);
+      } else if (landMode === 1) {
+        ctx.moveTo(0, fullH * 0.64);
+        ctx.quadraticCurveTo(fullW * 0.50, fullH * 0.38, fullW, fullH * 0.62);
+        ctx.lineTo(fullW, fullH * 0.74);
+        ctx.lineTo(0, fullH * 0.76);
+      } else if (landMode === 2) {
+        ctx.moveTo(fullW, fullH * 0.46);
+        ctx.lineTo(fullW * 0.40, fullH * 0.44);
+        ctx.lineTo(fullW * 0.18, fullH * 0.62);
+        ctx.lineTo(fullW, fullH * 0.70);
+      } else {
+        ctx.moveTo(fullW * 0.12, fullH * 0.52);
+        ctx.lineTo(fullW * 0.50, fullH * 0.36);
+        ctx.lineTo(fullW * 0.88, fullH * 0.52);
+        ctx.lineTo(fullW * 0.74, fullH * 0.68);
+        ctx.lineTo(fullW * 0.26, fullH * 0.68);
+      }
       ctx.closePath();
       ctx.fill();
 
-      for (let i = 0; i < 4; i++) {
-        const tx = fullW * (0.14 + i * 0.13);
-        const ty = fullH * (0.48 - (i % 2) * 0.04);
-        ctx.fillStyle = scene.pine;
+      // 5. Bölüme göre değişen GÜNEŞ / AY / KÜRE öğesi
+      const orbX = fullW * (0.20 + ((lvlNum * 29) % 60) / 100);
+      const orbY = fullH * (0.18 + ((lvlNum * 13) % 24) / 100);
+      const orbR = Math.min(fullW, fullH) * (0.06 + (lvlNum % 4) * 0.02);
+      ctx.fillStyle = cHighlight;
+      ctx.beginPath();
+      ctx.arc(orbX, orbY, orbR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 6. Bölüme göre değişen sayıda ve boyda ÇAM / SİVRİ FORMLAR
+      const pineCount = 2 + ((lvlNum * 3 + sceneIndex) % 6);
+      const pineStart = 0.07 + ((lvlNum * 7) % 14) / 100;
+      const pineGap = 0.10 + ((lvlNum * 5) % 7) / 100;
+      for (let i = 0; i < pineCount; i++) {
+        const tx = fullW * Math.min(0.90, pineStart + i * pineGap);
+        const ty = fullH * (0.43 + ((i + lvlNum) % 3) * 0.04);
+        const hTree = 16 + ((i * 9 + lvlNum * 7) % 22);
+        const wTree = 8 + ((i * 5 + lvlNum * 3) % 10);
+        ctx.fillStyle = cShapeDark;
         ctx.beginPath();
-        ctx.moveTo(tx, ty - 28);
-        ctx.lineTo(tx - 13, ty);
-        ctx.lineTo(tx + 13, ty);
+        ctx.moveTo(tx, ty - hTree);
+        ctx.lineTo(tx - wTree, ty);
+        ctx.lineTo(tx + wTree, ty);
         ctx.closePath();
         ctx.fill();
       }
 
-      const bx = fullW * 0.66;
-      const by = fullH * 0.62;
-      ctx.fillStyle = scene.sail;
+      // 7. Bölüme göre değişen YELKENLİ / TEKNE konumu ve yönü
+      const boatX = fullW * (0.20 + ((lvlNum * 23 + sceneIndex * 13) % 62) / 100);
+      const boatY = fullH * (0.60 + ((lvlNum * 11) % 18) / 100);
+      const boatDir = (lvlNum % 2 === 0) ? 1 : -1;
+      const boatScale = 0.75 + ((lvlNum * 3) % 5) * 0.14;
+
+      ctx.fillStyle = cHighlight;
       ctx.beginPath();
-      ctx.moveTo(bx, by - 36);
-      ctx.lineTo(bx + 26, by - 4);
-      ctx.lineTo(bx, by - 4);
+      ctx.moveTo(boatX, boatY - 36 * boatScale);
+      ctx.lineTo(boatX + 26 * boatScale * boatDir, boatY - 4 * boatScale);
+      ctx.lineTo(boatX, boatY - 4 * boatScale);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = scene.woodB;
-      ctx.fillRect(bx - 14, by - 4, 44, 7);
+      ctx.fillStyle = cShapeDark;
+      ctx.fillRect(
+        boatX - (boatDir === 1 ? 14 : 30) * boatScale,
+        boatY - 4 * boatScale,
+        44 * boatScale,
+        7 * boatScale
+      );
 
-      ctx.strokeStyle = scene.ring;
+      // 8. Bölüme göre değişen HALKALAR / DALGA İZLERİ
+      ctx.strokeStyle = cRing;
       ctx.lineWidth = 2.5;
-      for (let r = 0; r < 5; r++) {
-        const rx = fullW * (0.2 + r * 0.16);
-        const ry = fullH * (0.26 + (r % 2) * 0.44);
+      const ringCount = 2 + ((lvlNum * 3 + sceneIndex) % 5);
+      for (let r = 0; r < ringCount; r++) {
+        const rx = fullW * (0.12 + ((r * 27 + lvlNum * 19) % 76) / 100);
+        const ry = fullH * (0.15 + ((r * 21 + lvlNum * 13) % 70) / 100);
+        const radX = 10 + ((r + lvlNum) % 4) * 4;
+        const radY = 5 + ((r * 3 + lvlNum) % 3) * 2;
+        const rot = ((r + lvlNum) * 0.52) % Math.PI;
         ctx.beginPath();
-        ctx.ellipse(rx, ry, 14, 7, (r - 2) * 0.25, 0, Math.PI * 2);
+        ctx.ellipse(rx, ry, radX, radY, rot, 0, Math.PI * 2);
         ctx.stroke();
       }
+
+      ctx.restore();
+
 
       ctx.restore();
     }
