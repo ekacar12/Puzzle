@@ -1853,6 +1853,12 @@ render = function () {
     );
   }
 };
+window.onerror = function (msg, url, line, col) {
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    "<div style='position:fixed;top:0;left:0;right:0;z-index:999999;background:#991b1b;color:#fff;padding:10px;font-size:12px;'>HATA: " + msg + " (Satır " + line + ")</div>"
+  );
+};
 
     setupLevel(1);
   </script>
