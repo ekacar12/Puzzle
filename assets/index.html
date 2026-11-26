@@ -743,75 +743,253 @@
           ctx.clip();
           ctx.strokeStyle = epoxy.swirl;
           ctx.lineWidth = 3.5;
-          const swirlCount = 3 + (Math.abs(lvlNum) % 3);
-          for (let s = 0; s < swirlCount; s++) {
-            const sy = fullH * (0.18 + s * (0.64 / swirlCount));
-            ctx.beginPath();
-            ctx.moveTo(0, sy);
-            ctx.bezierCurveTo(
-              fullW * 0.33, sy + ((s + lvlNum) % 2 === 0 ? 25 : -25),
-              fullW * 0.66, sy + ((s + lvlNum) % 2 === 0 ? -25 : 25),
-              fullW, sy
-            );
-            ctx.stroke();
-          }
+                const lv = Math.max(1, Math.min(50, Math.abs(Number(lvlNum) || 1)));
+      const h1 = ((lv * 73 + 19) % 100) / 100;
+      const h2 = ((lv * 137 + 41) % 100) / 100;
+      const h3 = ((lv * 211 + 67) % 100) / 100;
+      const cx = fullW * (0.25 + h1 * 0.5);
+      const cy = fullH * (0.28 + h2 * 0.44);
+      const sc = 0.72 + h3 * 0.48;
+      const tilt = ((lv * 29) % 25 - 12) * (Math.PI / 180);
+      const kind = (lv - 1) % 10;
 
-          const sunRadius = 28 + (Math.abs(lvlNum) % 8);
-          const sunX = fullW * (0.80 - (Math.abs(lvlNum * 7) % 20) / 100);
-          const sunY = fullH * (0.22 - (Math.abs(lvlNum * 11) % 15) / 100);
-          ctx.fillStyle = "rgba(255, 251, 235, 0.75)";
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tilt);
+      ctx.scale(sc, sc);
+      ctx.strokeStyle = epoxy.swirl;
+      ctx.lineWidth = 2.6;
+
+      if (kind === 0) {
+        // Otomobil & Yol
+        ctx.strokeStyle = "rgba(255,255,255,0.45)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-fullW, 24);
+        ctx.quadraticCurveTo(0, 12 + (lv % 14) - 7, fullW, 24);
+        ctx.stroke();
+
+        ctx.fillStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.moveTo(-46, 14);
+        ctx.lineTo(-42, -4);
+        ctx.lineTo(-18, -6);
+        ctx.lineTo(-6, -22);
+        ctx.lineTo(24, -22);
+        ctx.lineTo(36, -6);
+        ctx.lineTo(48, 0);
+        ctx.lineTo(48, 14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = wood.dark;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = epoxy.bot;
+        ctx.fillRect(-12, -18, 14, 10);
+        ctx.fillRect(6, -18, 15, 10);
+
+        ctx.fillStyle = "#1f2937";
+        ctx.beginPath();
+        ctx.arc(-25, 15, 10, 0, Math.PI * 2);
+        ctx.arc(28, 15, 10, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (kind === 1) {
+        // Kemerli Köprü
+        ctx.strokeStyle = wood.dark;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(-62, 16);
+        ctx.quadraticCurveTo(0, -34, 62, 16);
+        ctx.stroke();
+
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(-66, 4);
+        ctx.lineTo(66, 4);
+        ctx.stroke();
+
+        for (let p = -40; p <= 40; p += 20) {
           ctx.beginPath();
-          ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(253, 230, 138, 0.5)";
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.arc(sunX, sunY, sunRadius + 6, 0, Math.PI * 2);
+          ctx.moveTo(p, 4);
+          ctx.lineTo(p, -8);
           ctx.stroke();
+        }
+      } else if (kind === 2) {
+        // Deniz Feneri & Işık Huzmesi
+        ctx.fillStyle = "rgba(255, 250, 205, 0.28)";
+        ctx.beginPath();
+        ctx.moveTo(0, -38);
+        ctx.lineTo(78, -62);
+        ctx.lineTo(78, -14);
+        ctx.closePath();
+        ctx.fill();
 
-          const pineCount = 2 + (Math.abs(lvlNum * 4) % 4);
-          for (let i = 0; i < pineCount; i++) {
-            const tx = fullW * (0.10 + (Math.abs(i * 37 + lvlNum * 29) % 78) / 100);
-            const ty = fullH * (0.55 + (Math.abs(i * 17 + lvlNum * 13) % 30) / 100);
-            const hTree = 25 + (Math.abs(i * 11 + lvlNum * 7) % 25);
-            const wTree = 12 + (Math.abs(i * 7 + lvlNum * 5) % 12);
-            ctx.fillStyle = wood.dark;
-            ctx.beginPath();
-            ctx.moveTo(tx, ty - hTree);
-            ctx.lineTo(tx - wTree, ty);
-            ctx.lineTo(tx + wTree, ty);
-            ctx.closePath();
-            ctx.fill();
-          }
+        ctx.fillStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.moveTo(-16, 28);
+        ctx.lineTo(-9, -32);
+        ctx.lineTo(9, -32);
+        ctx.lineTo(16, 28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = wood.dark;
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-          const bx = fullW * (0.38 + (Math.abs(lvlNum * 19) % 40) / 100);
-          const by = fullH * (0.65 + (Math.abs(lvlNum * 17) % 22) / 100);
-          const bDir = (lvlNum % 2 === 0) ? 1 : -1;
-          const bScale = 0.9 + (Math.abs(lvlNum) % 3) * 0.3;
-          ctx.fillStyle = "#fef3c7";
-          ctx.beginPath();
-          ctx.moveTo(bx, by - 40 * bScale);
-          ctx.lineTo(bx + 35 * bScale * bDir, by - 5 * bScale);
-          ctx.lineTo(bx, by - 5 * bScale);
-          ctx.closePath();
-          ctx.fill();
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(-11, -10, 22, 10);
+        ctx.fillRect(-9, 10, 18, 10);
+      } else if (kind === 3) {
+        // Yelkenli & Dalga
+        ctx.strokeStyle = epoxy.glow;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-54, 18);
+        ctx.quadraticCurveTo(-22, 8, 8, 18);
+        ctx.quadraticCurveTo(36, 26, 58, 16);
+        ctx.stroke();
 
-          ctx.fillStyle = wood.dark;
-          ctx.fillRect(bx - (bDir === 1 ? 18 : 42) * bScale, by - 5 * bScale, 50 * bScale, 9 * bScale);
+        ctx.fillStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.moveTo(2, -40);
+        ctx.lineTo(36, 6);
+        ctx.lineTo(2, 6);
+        ctx.closePath();
+        ctx.fill();
 
-          const ringCount = 1 + (Math.abs(lvlNum * 5) % 6);
-          for (let r = 0; r < ringCount; r++) {
-            const rx = fullW * (0.15 + (Math.abs(r * 33 + lvlNum * 25) % 74) / 100);
-            const ry = fullH * (0.35 + (Math.abs(r * 17 + lvlNum * 13) % 50) / 100);
-            const radX = 18 + (r % 5) * 6;
-            const radY = 7 + (r % 4) * 3;
-            const rot = (Math.abs(r + lvlNum) * 0.8) % Math.PI;
-            ctx.strokeStyle = epoxy.glow;
-            ctx.lineWidth = 3.0;
-            ctx.beginPath();
-            ctx.ellipse(rx, ry, radX, radY, rot, 0, Math.PI * 2);
-            ctx.stroke();
-          }
+        ctx.fillStyle = wood.dark;
+        ctx.beginPath();
+        ctx.moveTo(-34, 8);
+        ctx.lineTo(38, 8);
+        ctx.lineTo(26, 20);
+        ctx.lineTo(-24, 20);
+        ctx.closePath();
+        ctx.fill();
+      } else if (kind === 4) {
+        // Çift Dağ Zirvesi & Güneş/Ay
+        ctx.fillStyle = "rgba(255, 248, 200, 0.85)";
+        ctx.beginPath();
+        ctx.arc(38, -28, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = wood.dark;
+        ctx.beginPath();
+        ctx.moveTo(-64, 26);
+        ctx.lineTo(-18, -32);
+        ctx.lineTo(18, 26);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = wood.grain;
+        ctx.beginPath();
+        ctx.moveTo(-6, 26);
+        ctx.lineTo(30, -18);
+        ctx.lineTo(66, 26);
+        ctx.closePath();
+        ctx.fill();
+      } else if (kind === 5) {
+        // Sıcak Hava Balonu
+        ctx.fillStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.ellipse(0, -14, 26, 32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = wood.dark;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.strokeStyle = epoxy.glow;
+        ctx.beginPath();
+        ctx.ellipse(0, -14, 11, 32, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = wood.dark;
+        ctx.fillRect(-10, 24, 20, 14);
+      } else if (kind === 6) {
+        // Altıgen / Kristal Çerçeve
+        ctx.strokeStyle = epoxy.glow;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i + (lv % 3) * 0.25;
+          const r = 38;
+          const px = Math.cos(a) * r;
+          const py = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 16, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (kind === 7) {
+        // Spiral / Sarmal Desen
+        ctx.strokeStyle = epoxy.glow;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        for (let t = 0; t < 42; t++) {
+          const ang = t * 0.35;
+          const rad = t * 1.15;
+          const sx = Math.cos(ang) * rad;
+          const sy = Math.sin(ang) * rad;
+          if (t === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      } else if (kind === 8) {
+        // Roket / Uzay Aracı
+        ctx.fillStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.moveTo(0, -44);
+        ctx.quadraticCurveTo(22, -12, 16, 22);
+        ctx.lineTo(-16, 22);
+        ctx.quadraticCurveTo(-22, -12, 0, -44);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = wood.dark;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = epoxy.bot;
+        ctx.beginPath();
+        ctx.arc(0, -8, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,220,120,0.85)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-8, 25);
+        ctx.lineTo(-12, 38);
+        ctx.moveTo(0, 25);
+        ctx.lineTo(0, 42);
+        ctx.moveTo(8, 25);
+        ctx.lineTo(12, 38);
+        ctx.stroke();
+      } else {
+        // Elmas & Kesişen Yaylar
+        ctx.strokeStyle = epoxy.glow;
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -38);
+        ctx.lineTo(42, 0);
+        ctx.lineTo(0, 38);
+        ctx.lineTo(-42, 0);
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(-18, 0, 20, -Math.PI * 0.6, Math.PI * 0.6);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(18, 0, 20, Math.PI * 0.4, Math.PI * 1.6);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
         } finally {
           ctx.restore();
         }
