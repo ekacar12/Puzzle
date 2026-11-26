@@ -537,80 +537,46 @@
     ];
 
     
-    const SoundFX = {
-      ctx: null,
-      masterGain: null,
-      compressor: null,
-      enabled: true,
-      ensureContext() {
-        if (!this.enabled) return null;
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return null;
-        if (!this.ctx) {
-          this.ctx = new AudioCtx();
-
-          this.compressor = this.ctx.createDynamicsCompressor();
-          this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
-          this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
-          this.compressor.ratio.setValueAtTime(6, this.ctx.currentTime);
-          this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
-          this.compressor.release.setValueAtTime(0.18, this.ctx.currentTime);
-
-          this.masterGain = this.ctx.createGain();
-          this.masterGain.gain.setValueAtTime(1.45, this.ctx.currentTime);
-
-          this.compressor.connect(this.masterGain);
-          this.masterGain.connect(this.ctx.destination);
+            },
+        correct() {
+          this.woodThud();
+          this.tone(523.25, 0.13, "triangle", 0.45, 0);
+          this.tone(659.25, 0.18, "sine", 0.4, 0.05);
+        },
+        win() {
+          this.woodThud();
+          this.tone(523.25, 0.15, "triangle", 0.62, 0);
+          this.tone(659.25, 0.15, "triangle", 0.62, 0.09);
+          this.tone(783.99, 0.15, "triangle", 0.62, 0.18);
+          this.tone(1046.5, 0.32, "sine", 0.62, 0.27);
+        },
+        reward() {
+          this.tone(587.33, 0.13, "triangle", 0.58, 0);
+          this.tone(880.0, 0.24, "sine", 0.58, 0.08);
+        },
+        warn() {
+          this.tone(210, 0.18, "triangle", 0.45, 0);
+        },
+        woodThud() {
+          if (!this.enabled) return;
+          const c = this.ensureContext();
+          if (!c) return;
+          const now = c.currentTime;
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(155, now);
+          osc.frequency.exponentialRampToValueAtTime(52, now + 0.11);
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.65, now + 0.006);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.connect(gain);
+          gain.connect(this.masterGain || c.destination);
+          osc.start(now);
+          osc.stop(now + 0.13);
         }
-        if (this.ctx.state === "suspended") {
-          this.ctx.resume().catch(() => {});
-        }
-        return this.ctx;
-      },
-      tone(freq, duration, type = "sine", gainVal = 0.45, delay = 0, endFreq = null) {
-        const ctx = this.ensureContext();
-        if (!ctx) return;
-        const now = ctx.currentTime + delay;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, now);
-        if (endFreq !== null) {
-          osc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), now + duration);
-        }
-        gain.gain.setValueAtTime(0.0008, now);
-        gain.gain.exponentialRampToValueAtTime(Math.min(0.85, gainVal), now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0008, now + duration);
-        osc.connect(gain);
-        gain.connect(this.compressor);
-        osc.start(now);
-        osc.stop(now + duration + 0.025);
-      },
-      tap() {
-        this.tone(260, 0.08, "triangle", 0.48, 0, 175);
-      },
-      swap() {
-        this.tone(330, 0.09, "triangle", 0.46, 0, 390);
-        this.tone(460, 0.1, "sine", 0.48, 0.045, 520);
-      },
-      correct() {
-        this.tone(523.25, 0.13, "triangle", 0.52, 0);
-        this.tone(659.25, 0.18, "sine", 0.55, 0.065);
-      },
-      win() {
-        this.tone(523.25, 0.15, "triangle", 0.56, 0);
-        this.tone(659.25, 0.15, "triangle", 0.56, 0.1);
-        this.tone(783.99, 0.15, "triangle", 0.56, 0.2);
-        this.tone(1046.5, 0.32, "sine", 0.62, 0.3);
-      },
-      reward() {
-        this.tone(587.33, 0.13, "triangle", 0.52, 0);
-        this.tone(880.0, 0.24, "sine", 0.58, 0.09);
-      },
-      warn() {
-        this.tone(210, 0.18, "triangle", 0.45, 0, 145);
-      }
-    };
+      };
+
 
     const state = {
       level: 1,
@@ -993,19 +959,617 @@
         } finally {
           ctx.restore();
         }
+      ctx.save();
+      try {
+        ctx.clearRect(0, 0, w, h);
+        ctx.translate(-col * w, -row * h);
 
-        ctx.strokeStyle = "rgba(250, 250, 250, 0.3)";
-        ctx.lineWidth = 3.0;
-        ctx.strokeRect(col * w + 1.5, row * h + 1.5, Math.max(0, w - 3), Math.max(0, h - 3));
-        ctx.strokeStyle = "rgba(30, 30, 30, 0.3)";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(col * w + 3, row * h + 3, Math.max(0, w - 6), Math.max(0, h - 6));
+        const lv = Math.max(1, Math.min(50, Math.abs(Number(lvlNum) || 1)));
+
+        const woodPalettes = [
+          { base: "#9c6234", mid: "#7e4921", dark: "#4b270e", light: "#c28550", sap: "#d8a16c" },
+          { base: "#8b5229", mid: "#6c3b19", dark: "#3e1f0a", light: "#b57442", sap: "#cf935f" },
+          { base: "#a96d3b", mid: "#875126", dark: "#522b10", light: "#cc915b", sap: "#e0ad78" },
+          { base: "#7c4723", mid: "#5e3214", dark: "#361a08", light: "#a36537", sap: "#be8352" }
+        ];
+
+        const epoxyPalettes = [
+          { top: "#0ea5e9", bot: "#0369a1", glow: "rgba(186,230,253,0.85)", swirl: "rgba(224,242,254,0.45)" },
+          { top: "#10b981", bot: "#065f46", glow: "rgba(167,243,208,0.85)", swirl: "rgba(209,250,229,0.45)" },
+          { top: "#f59e0b", bot: "#b45309", glow: "rgba(253,230,138,0.85)", swirl: "rgba(254,243,199,0.45)" },
+          { top: "#8b5cf6", bot: "#5b21b6", glow: "rgba(221,214,254,0.85)", swirl: "rgba(237,233,254,0.45)" },
+          { top: "#14b8a6", bot: "#115e59", glow: "rgba(153,246,228,0.85)", swirl: "rgba(204,251,241,0.45)" }
+        ];
+
+        const wood = woodPalettes[(lv - 1) % woodPalettes.length];
+        const epoxy = epoxyPalettes[(lv * 3) % epoxyPalettes.length];
+
+        // 1. ORGANİK MASİF AHŞAP TABANI
+        const baseGrad = ctx.createLinearGradient(0, 0, fullW * 0.25, fullH);
+        baseGrad.addColorStop(0, wood.light);
+        baseGrad.addColorStop(0.32, wood.base);
+        baseGrad.addColorStop(0.68, wood.mid);
+        baseGrad.addColorStop(1, wood.dark);
+        ctx.fillStyle = baseGrad;
+        ctx.fillRect(0, 0, fullW, fullH);
+
+        // Tahta birleşim / masif çıta geçişleri
+        const plankCount = 3 + (lv % 2);
+        const plankH = fullH / plankCount;
+        for (let p = 0; p < plankCount; p++) {
+          const py = p * plankH;
+          if (p % 2 === 1) {
+            ctx.fillStyle = "rgba(42, 20, 6, 0.14)";
+            ctx.fillRect(0, py, fullW, plankH);
+          } else {
+            ctx.fillStyle = "rgba(255, 224, 185, 0.08)";
+            ctx.fillRect(0, py, fullW, plankH);
+          }
+          if (p > 0) {
+            ctx.strokeStyle = "rgba(38, 16, 5, 0.36)";
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(0, py);
+            ctx.lineTo(fullW, py);
+            ctx.stroke();
+          }
+        }
+
+        // Organik dalgalı ağaç lifleri ve kılcal damarlar
+        const grainLines = 34;
+        for (let g = 0; g < grainLines; g++) {
+          const gy = (fullH / grainLines) * g + ((g * 7) % 5) - 2;
+          const amp1 = 5 + ((g + lv) % 9);
+          const amp2 = -4 - ((g * 3 + lv) % 8);
+          ctx.strokeStyle = g % 3 === 0 ? "rgba(48, 22, 7, 0.34)" : "rgba(235, 186, 134, 0.16)";
+          ctx.lineWidth = g % 4 === 0 ? 1.8 : 0.95;
+          ctx.beginPath();
+          ctx.moveTo(0, gy);
+          ctx.bezierCurveTo(
+            fullW * 0.28, gy + amp1,
+            fullW * 0.68, gy + amp2,
+            fullW, gy + ((g % 3) - 1) * 3
+          );
+          ctx.stroke();
+        }
+
+        // Doğal budak gözleri ve çevresinde kıvrılan lifler
+        const knotX = fullW * (0.24 + ((lv * 37) % 52) / 100);
+        const knotY = fullH * (0.28 + ((lv * 53) % 44) / 100);
+        for (let k = 1; k <= 5; k++) {
+          ctx.strokeStyle = k === 1 ? "rgba(42, 18, 5, 0.55)" : "rgba(56, 25, 8, 0.28)";
+          ctx.lineWidth = k === 1 ? 2.2 : 1.2;
+          ctx.beginPath();
+          ctx.ellipse(knotX, knotY, k * 11, k * 4.2, ((lv % 5) - 2) * 0.08, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = wood.dark;
+        ctx.beginPath();
+        ctx.ellipse(knotX, knotY, 6, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // İnce ahşap gözenek dokusu
+        ctx.fillStyle = "rgba(35, 15, 4, 0.18)";
+        for (let d = 0; d < 45; d++) {
+          const dx = ((d * 97 + lv * 31) % 1000) / 1000 * fullW;
+          const dy = ((d * 61 + lv * 17) % 1000) / 1000 * fullH;
+          ctx.fillRect(dx, dy, 5 + (d % 6), 1.1);
+        }
+
+        // 2. EPOKSİ REÇİNE NEHRİ / HAVUZU
+        const riverMode = (lv - 1) % 4;
+        const epoxyGrad = ctx.createLinearGradient(0, 0, fullW, fullH);
+        epoxyGrad.addColorStop(0, epoxy.top);
+        epoxyGrad.addColorStop(1, epoxy.bot);
+
+        ctx.save();
+        try {
+          ctx.beginPath();
+          if (riverMode === 0) {
+            ctx.moveTo(0, fullH * 0.62);
+            ctx.bezierCurveTo(fullW * 0.35, fullH * 0.48, fullW * 0.65, fullH * 0.72, fullW, fullH * 0.56);
+            ctx.lineTo(fullW, fullH);
+            ctx.lineTo(0, fullH);
+          } else if (riverMode === 1) {
+            ctx.ellipse(fullW * 0.5, fullH * 0.52, fullW * 0.38, fullH * 0.33, 0, 0, Math.PI * 2);
+          } else if (riverMode === 2) {
+            ctx.moveTo(fullW * 0.18, 0);
+            ctx.bezierCurveTo(fullW * 0.42, fullH * 0.38, fullW * 0.22, fullH * 0.68, fullW * 0.45, fullH);
+            ctx.lineTo(fullW * 0.85, fullH);
+            ctx.bezierCurveTo(fullW * 0.62, fullH * 0.65, fullW * 0.82, fullH * 0.35, fullW * 0.58, 0);
+          } else {
+            ctx.moveTo(0, fullH * 0.24);
+            ctx.bezierCurveTo(fullW * 0.32, fullH * 0.14, fullW * 0.68, fullH * 0.34, fullW, fullH * 0.2);
+            ctx.lineTo(fullW, fullH * 0.82);
+            ctx.bezierCurveTo(fullW * 0.68, fullH * 0.92, fullW * 0.32, fullH * 0.72, 0, fullH * 0.84);
+          }
+          ctx.closePath();
+          ctx.fillStyle = epoxyGrad;
+          ctx.fill();
+
+          ctx.strokeStyle = epoxy.glow;
+          ctx.lineWidth = 5.0;
+          ctx.stroke();
+
+          ctx.clip();
+          ctx.strokeStyle = epoxy.swirl;
+          ctx.lineWidth = 2.6;
+          for (let s = 0; s < 4; s++) {
+            const sy = fullH * (0.22 + s * 0.18);
+            ctx.beginPath();
+            ctx.moveTo(0, sy);
+            ctx.bezierCurveTo(fullW * 0.33, sy + 14, fullW * 0.66, sy - 14, fullW, sy);
+            ctx.stroke();
+          }
+        } finally {
+          ctx.restore();
+        }
+
+        // 3. 50 BÖLÜME ÖZEL BİRBİRİNDEN TAMAMEN FARKLI ŞEKİLLER (3B FORMLAR + 50. BÖLÜM TÜRK BAYRAĞI)
+        {
+          const cx = fullW * 0.5;
+          const cy = fullH * 0.5;
+          const sc = Math.min(fullW, fullH) / 145;
+
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale(sc, sc);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+
+          const light = "#fffbeb";
+          const gold = "#fde047";
+          const accent = "#fb7185";
+          const sky = "#38bdf8";
+          const mint = "#34d399";
+          const darkLine = "#261206";
+
+          const poly = (pts, fill, stroke = darkLine, lw = 2.3) => {
+            ctx.beginPath();
+            pts.forEach(([x, y], idx) => (idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+            ctx.closePath();
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+          };
+
+          const ring = (x, y, r, fill, stroke = darkLine, lw = 2.3) => {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+          };
+
+          const isoBox = (ox, oy, dx, dy, hBox, cTop, cLeft, cRight) => {
+            poly([[ox, oy - hBox], [ox + dx, oy - dy - hBox], [ox, oy - dy * 2 - hBox], [ox - dx, oy - dy - hBox]], cTop);
+            poly([[ox - dx, oy - dy - hBox], [ox, oy - hBox], [ox, oy], [ox - dx, oy - dy]], cLeft);
+            poly([[ox, oy - hBox], [ox + dx, oy - dy - hBox], [ox + dx, oy - dy], [ox, oy]], cRight);
+          };
+
+          switch (lv) {
+            case 1:
+              isoBox(0, 22, 30, 15, 32, light, gold, "#d97706");
+              break;
+            case 2:
+              poly([[-44,12],[-41,-3],[-17,-6],[-5,-21],[21,-21],[34,-5],[46,1],[46,12]], light);
+              poly([[-10,-17],[2,-17],[2,-7],[-10,-7]], sky, darkLine, 1.8);
+              poly([[6,-17],[19,-17],[24,-7],[6,-7]], sky, darkLine, 1.8);
+              ring(-24, 14, 9.5, "#1e293b", light, 2.2);
+              ring(27, 14, 9.5, "#1e293b", light, 2.2);
+              break;
+            case 3:
+              poly([[0,-36],[-36,22],[0,30]], light);
+              poly([[0,-36],[0,30],[36,22]], gold);
+              break;
+            case 4:
+              ctx.strokeStyle = light; ctx.lineWidth = 6.5;
+              ctx.beginPath(); ctx.moveTo(-54, 18); ctx.quadraticCurveTo(0, -28, 54, 18); ctx.stroke();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2; ctx.stroke();
+              ctx.strokeStyle = gold; ctx.lineWidth = 3.2;
+              ctx.beginPath(); ctx.moveTo(-58, 6); ctx.lineTo(58, 6); ctx.stroke();
+              for (let x = -36; x <= 36; x += 18) { ctx.beginPath(); ctx.moveTo(x, 6); ctx.lineTo(x, -6); ctx.stroke(); }
+              break;
+            case 5:
+              poly([[-24,-18],[24,-18],[24,20],[-24,20]], gold, darkLine, 2.2);
+              ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(0, 20, 24, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+              ctx.fillStyle = light; ctx.beginPath(); ctx.ellipse(0, -18, 24, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+              break;
+            case 6:
+              poly([[0,-28],[66,-50],[66,-10]], "rgba(254,240,138,0.38)", null);
+              poly([[-14,26],[-8,-26],[8,-26],[14,26]], light);
+              poly([[-10,-9],[10,-9],[11,2],[-11,2]], accent, darkLine, 1.8);
+              poly([[-9,13],[9,13],[10,22],[-10,22]], accent, darkLine, 1.8);
+              break;
+            case 7:
+              isoBox(-14, 24, 22, 11, 20, light, sky, "#0284c7");
+              isoBox(12, 16, 22, 11, 34, gold, accent, "#be123c");
+              break;
+            case 8:
+              poly([[3,-36],[30,4],[3,4]], light);
+              poly([[-24,-24],[0,4],[-24,4]], gold);
+              poly([[-32,6],[34,6],[24,19],[-22,19]], darkLine, light, 2);
+              break;
+            case 9:
+              {
+                const sg = ctx.createRadialGradient(-10, -12, 4, 0, 0, 32);
+                sg.addColorStop(0, "#ffffff");
+                sg.addColorStop(0.45, gold);
+                sg.addColorStop(1, "#92400e");
+                ring(0, 0, 30, sg, darkLine, 2.4);
+              }
+              break;
+            case 10:
+              ctx.fillStyle = light; ctx.beginPath(); ctx.ellipse(0, -12, 24, 30, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2.4; ctx.stroke();
+              ctx.strokeStyle = accent; ctx.lineWidth = 2.2;
+              ctx.beginPath(); ctx.ellipse(0, -12, 10, 30, 0, 0, Math.PI * 2); ctx.stroke();
+              poly([[-9,22],[9,22],[9,34],[-9,34]], darkLine, light, 1.8);
+              break;
+            case 11:
+              poly([[0,-36],[-28,20],[28,20]], gold);
+              ctx.fillStyle = "#b45309"; ctx.beginPath(); ctx.ellipse(0, 20, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2.2; ctx.stroke();
+              break;
+            case 12:
+              poly([[0,-38],[18,-10],[14,18],[-14,18],[-18,-10]], light);
+              poly([[-14,6],[-26,20],[-14,18]], accent);
+              poly([[14,6],[26,20],[14,18]], accent);
+              ring(0, -8, 7, sky, darkLine, 2);
+              break;
+            case 13:
+              poly([[-24,-22],[0,-32],[24,-22],[24,-10],[0,0],[-24,-10]], light);
+              poly([[-24,-10],[0,0],[0,26],[-24,16]], mint);
+              poly([[0,0],[24,-10],[24,16],[0,26]], "#047857");
+              break;
+            case 14:
+              ring(-7, 0, 26, gold, darkLine, 2);
+              ring(6, -4, 22, darkLine, null);
+              poly([[25,-18],[28,-11],[36,-11],[30,-6],[32,2],[25,-3],[18,2],[20,-6],[14,-11],[22,-11]], light, darkLine, 1.6);
+              break;
+            case 15:
+              isoBox(-18, 26, 16, 8, 14, light, gold, "#b45309");
+              isoBox(0, 22, 16, 8, 26, light, gold, "#b45309");
+              isoBox(18, 18, 16, 8, 38, light, gold, "#b45309");
+              break;
+            case 16:
+              ring(0, 0, 32, "rgba(255,251,235,0.22)", light, 2.8);
+              poly([[0,-24],[6,0],[0,6],[-6,0]], accent, darkLine, 1.8);
+              poly([[0,24],[6,0],[0,-6],[-6,0]], light, darkLine, 1.8);
+              break;
+            case 17:
+              poly([[-42,2],[26,-4],[42,-14],[34,4],[-18,10],[-38,14]], light);
+              poly([[-8,2],[12,-24],[20,-2],[4,6]], gold);
+              poly([[-6,6],[10,22],[16,8]], light);
+              break;
+            case 18:
+              poly([[-26,22],[-26,-2],[4,6],[4,28]], light);
+              poly([[4,28],[4,6],[28,-4],[28,20]], gold);
+              poly([[-30,-2],[-10,-26],[10,6]], accent);
+              poly([[-10,-26],[16,-32],[32,-4],[10,6]], "#e11d48");
+              break;
+            case 19:
+              ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(-4, 0, 28, 16, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2.4; ctx.stroke();
+              poly([[22,0],[40,-14],[36,0],[40,14]], light);
+              ring(-16, -4, 3.5, darkLine, null);
+              break;
+            case 20:
+              ring(0, 0, 30, gold, darkLine, 2.4);
+              ring(-2, -2, 26, light, null, 0);
+              ring(0, 0, 13, darkLine, darkLine, 2.2);
+              break;
+            case 21:
+              poly([[-18,-26],[18,-26],[14,-4],[-14,-4]], gold);
+              poly([[-3,-4],[3,-4],[3,18],[-3,18]], gold, darkLine, 1.6);
+              poly([[-16,18],[16,18],[20,26],[-20,26]], gold);
+              break;
+            case 22:
+              ctx.strokeStyle = gold; ctx.lineWidth = 3;
+              ctx.beginPath();
+              for (let t=0; t<46; t++) {
+                const a=t*0.35, r=t*0.95;
+                t===0 ? ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r) : ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+              }
+              ctx.stroke();
+              break;
+            case 23:
+              poly([[-20,-14],[0,-26],[20,-14],[12,-4],[-12,-4]], light);
+              poly([[-20,-14],[-12,-4],[0,32]], sky);
+              poly([[-12,-4],[12,-4],[0,32]], "#0284c7");
+              poly([[12,-4],[20,-14],[0,32]], "#0369a1");
+              break;
+            case 24:
+              for (let i=0; i<6; i++) {
+                ctx.save(); ctx.rotate(i*Math.PI/3);
+                ctx.fillStyle = light; ctx.beginPath(); ctx.ellipse(0, -18, 9, 16, 0, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = darkLine; ctx.lineWidth = 1.8; ctx.stroke();
+                ctx.restore();
+              }
+              ring(0, 0, 9, accent, darkLine, 2);
+              break;
+            case 25:
+              poly([[-22,-28],[22,-28],[4,0],[22,28],[-22,28],[-4,0]], "rgba(255,251,235,0.28)", light, 2.5);
+              poly([[-12,12],[12,12],[18,25],[-18,25]], gold, darkLine, 1.6);
+              break;
+            case 26:
+              isoBox(0, 28, 20, 10, 48, light, sky, "#0369a1");
+              break;
+            case 27:
+              ring(0, 0, 28, light, darkLine, 2.2);
+              ring(0, 0, 17, accent, darkLine, 2);
+              ring(0, 0, 7, gold, darkLine, 1.8);
+              break;
+            case 28:
+              poly([[-24,-10],[24,-10],[24,24],[-24,24]], light);
+              poly([[-28,-20],[28,-20],[28,-10],[-28,-10]], accent);
+              poly([[-5,-20],[5,-20],[5,24],[-5,24]], gold, darkLine, 1.6);
+              break;
+            case 29:
+              ring(0, 0, 15, gold, darkLine, 2);
+              ctx.strokeStyle = gold; ctx.lineWidth = 3.2;
+              for (let i=0; i<12; i++) {
+                const a=i*Math.PI/6;
+                ctx.beginPath(); ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20); ctx.lineTo(Math.cos(a)*32,Math.sin(a)*32); ctx.stroke();
+              }
+              break;
+            case 30:
+              isoBox(0, 20, 16, 8, 36, light, gold, "#b45309");
+              isoBox(-18, 14, 14, 7, 16, light, gold, "#b45309");
+              isoBox(18, 14, 14, 7, 16, light, gold, "#b45309");
+              break;
+            case 31:
+              poly([[6,-34],[-14,-2],[4,-2],[-8,34],[18,-6],[-2,-6]], gold);
+              break;
+            case 32:
+              poly([[-26,18],[0,-10],[26,18]], mint);
+              poly([[-20,2],[0,-24],[20,2]], mint);
+              poly([[-14,-14],[0,-36],[14,-14]], light);
+              poly([[-5,18],[5,18],[5,30],[-5,30]], darkLine, null);
+              break;
+            case 33:
+              ctx.fillStyle = mint; ctx.beginPath(); ctx.ellipse(0, 0, 32, 15, -0.35, 0, Math.PI*2); ctx.fill();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2.2; ctx.stroke();
+              ctx.beginPath(); ctx.moveTo(-26, 9); ctx.lineTo(26, -9); ctx.stroke();
+              break;
+            case 34:
+              poly([[-30,-24],[30,-24],[30,24],[-30,24]], light);
+              poly([[-18,-14],[18,-14],[18,14],[-18,14]], darkLine);
+              poly([[-18,-14],[18,-14],[12,-8],[-12,-8]], gold, null);
+              break;
+            case 35:
+              ctx.fillStyle = accent; ctx.beginPath();
+              ctx.moveTo(0, 24);
+              ctx.bezierCurveTo(-42, -2, -26, -32, 0, -12);
+              ctx.bezierCurveTo(26, -32, 42, -2, 0, 24);
+              ctx.fill(); ctx.strokeStyle = light; ctx.lineWidth = 2.2; ctx.stroke();
+              break;
+            case 36:
+              ctx.strokeStyle = light; ctx.lineWidth = 3.2;
+              ctx.beginPath(); ctx.moveTo(-16,-28); ctx.lineTo(-16,28); ctx.moveTo(16,-28); ctx.lineTo(16,28); ctx.stroke();
+              for (let y=-20; y<=20; y+=10) { ctx.beginPath(); ctx.moveTo(-16,y); ctx.lineTo(16,y); ctx.stroke(); }
+              break;
+            case 37:
+              isoBox(-16, 18, 18, 9, 22, light, mint, "#047857");
+              isoBox(16, 18, 18, 9, 22, light, sky, "#0369a1");
+              break;
+            case 38:
+              ctx.fillStyle = gold; ctx.beginPath();
+              ctx.arc(0, -12, 13, 0, Math.PI*2); ctx.arc(0, 12, 18, 0, Math.PI*2); ctx.fill();
+              ctx.strokeStyle = darkLine; ctx.lineWidth = 2.2; ctx.stroke();
+              ring(0, 8, 5, darkLine, null);
+              break;
+            case 39:
+              ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(0, 4, 30, Math.PI, 0); ctx.closePath(); ctx.fill();
+              ctx.strokeStyle = light; ctx.lineWidth = 2.2; ctx.stroke();
+              ctx.strokeStyle = light; ctx.lineWidth = 3.2;
+              ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(0,26); ctx.arc(6,26,6,0,Math.PI); ctx.stroke();
+              break;
+            case 40:
+              isoBox(-28, 22, 14, 7, 30, light, gold, "#b45309");
+              isoBox(28, 22, 14, 7, 30, light, gold, "#b45309");
+              isoBox(0, 2, 42, 10, 10, light, gold, "#b45309");
+              break;
+            case 41:
+              poly([[0,-32],[28,18],[0,8],[-28,18]], light);
+              break;
+            case 42:
+              ring(-12, 0, 20, null, light, 3.4);
+              ring(12, 0, 20, null, gold, 3.4);
+              break;
+            case 43:
+              poly([[0,-34],[10,-10],[34,-10],[15,6],[22,30],[0,15],[-22,30],[-15,6],[-34,-10],[-10,-10]], gold);
+              poly([[0,-34],[10,-10],[0,0],[-10,-10]], light, darkLine, 1.5);
+              break;
+            case 44:
+              ctx.strokeStyle = light; ctx.lineWidth = 3.4;
+              [-18, -4, 10, 24].forEach((yOff) => {
+                ctx.beginPath(); ctx.moveTo(-46, yOff);
+                ctx.bezierCurveTo(-18, yOff-13, 18, yOff+13, 46, yOff); ctx.stroke();
+              });
+              break;
+            case 45:
+              poly([[-18,-28],[-42,20],[-18,26]], light);
+              poly([[-18,-28],[-18,26],[4,20]], gold);
+              poly([[18,-22],[-2,22],[18,28]], light);
+              poly([[18,-22],[18,28],[40,22]], sky);
+              break;
+            case 46:
+              ring(0,0,17,null,light,4.2);
+              for(let i=0;i<8;i++){
+                const a=i*Math.PI/4;
+                ctx.strokeStyle=gold; ctx.lineWidth=5;
+                ctx.beginPath(); ctx.moveTo(Math.cos(a)*17,Math.sin(a)*17); ctx.lineTo(Math.cos(a)*28,Math.sin(a)*28); ctx.stroke();
+              }
+              break;
+            case 47:
+              isoBox(0, 26, 34, 16, 12, light, gold, "#b45309");
+              isoBox(0, 14, 24, 11, 12, light, gold, "#b45309");
+              isoBox(0, 2, 14, 6, 12, light, gold, "#b45309");
+              break;
+            case 48:
+              poly(Array.from({length:8},(_,i)=>[Math.cos(i*Math.PI/4)*34,Math.sin(i*Math.PI/4)*34]),"rgba(255,251,235,0.24)",light,2.8);
+              ring(0,0,14,accent,darkLine,2);
+              break;
+            case 49:
+              poly([[-32,16],[-36,-14],[-14,2],[0,-24],[14,2],[36,-14],[32,16]], gold);
+              break;
+            case 50:
+            default: {
+              const fw = 98;
+              const fh = 65;
+              const fx = -fw / 2;
+              const fy = -fh / 2;
+
+              poly([[fx, fy], [fx + fw, fy], [fx + fw, fy + fh], [fx, fy + fh]], "#e30a17", light, 2.4);
+
+              const moonCx = fx + fw * 0.34;
+              const outerR = fh * 0.25;
+              const innerR = fh * 0.2;
+              const innerCx = moonCx + fh * 0.0625;
+
+              ring(moonCx, 0, outerR, light, null, 0);
+              ring(innerCx, 0, innerR, "#e30a17", null, 0);
+
+              const starCx = fx + fw * 0.62;
+              const rOuter = fh * 0.115;
+              const rInner = rOuter * 0.382;
+              const starPts = [];
+              for (let i = 0; i < 10; i++) {
+                const rad = i % 2 === 0 ? rOuter : rInner;
+                const ang = -Math.PI / 2 + (i * Math.PI) / 5;
+                starPts.push([starCx + Math.cos(ang) * rad, Math.sin(ang) * rad]);
+              }
+              poly(starPts, light, null, 0);
+              break;
+            }
+          }
+
+          ctx.restore();
+        }
+
+        // 4. PARÇA KENAR ÇERÇEVESİ
+        ctx.strokeStyle = "rgba(255, 248, 235, 0.45)";
+        ctx.lineWidth = 2.6;
+        ctx.strokeRect(col * w + 1.3, row * h + 1.3, w - 2.6, h - 2.6);
+        ctx.strokeStyle = "rgba(38, 16, 5, 0.55)";
+        ctx.lineWidth = 1.3;
+        ctx.strokeRect(col * w + 2.6, row * h + 2.6, w - 5.2, h - 5.2);
       } finally {
         ctx.restore();
       }
     }
 
-          
+    (function setupLevelPreviewModal() {
+      const modalId = "levelPreviewModal";
+      let modal = document.getElementById(modalId);
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = modalId;
+        modal.style.cssText = [
+          "position:fixed", "inset:0", "z-index:9999", "display:none",
+          "align-items:center", "justify-content:center", "padding:14px",
+          "background:rgba(12,8,5,0.82)", "backdrop-filter:blur(4px)"
+        ].join(";");
+
+        modal.innerHTML = `
+          <div style="width:100%;max-width:520px;max-height:84vh;display:flex;flex-direction:column;background:#23160d;border:1px solid rgba(255,235,205,0.18);border-radius:18px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.65);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,235,205,0.12);color:#fff8eb;font-family:inherit;">
+              <strong style="font-size:15px;">Bölümler</strong>
+              <button type="button" id="closeLevelPreviewBtn" style="background:#3a2416;color:#fff8eb;border:1px solid rgba(255,235,205,0.2);border-radius:10px;padding:6px 12px;font-size:13px;cursor:pointer;">Kapat</button>
+            </div>
+            <div id="levelPreviewGrid" style="padding:12px;overflow-y:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById("closeLevelPreviewBtn").addEventListener("click", () => {
+          modal.style.display = "none";
+        });
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.style.display = "none";
+        });
+      }
+
+      function getLevelTitle(lv) {
+        if (typeof LEVELS !== "undefined" && Array.isArray(LEVELS) && LEVELS[lv - 1]) {
+          const item = LEVELS[lv - 1];
+          return item.title || item.name || `${lv}. Bölüm`;
+        }
+        return `${lv}. Bölüm`;
+      }
+
+      function selectLevel(lv) {
+        if (typeof startLevel === "function") {
+          startLevel(lv);
+        } else if (typeof loadLevel === "function") {
+          loadLevel(lv);
+        } else if (typeof setLevel === "function") {
+          setLevel(lv);
+        } else if (typeof state !== "undefined") {
+          state.level = lv;
+          if (typeof render === "function") render();
+        }
+        modal.style.display = "none";
+      }
+
+      function openLevelPreview() {
+        const grid = document.getElementById("levelPreviewGrid");
+        grid.innerHTML = "";
+
+        for (let lv = 1; lv <= 50; lv++) {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.style.cssText = [
+            "display:flex", "flex-direction:column", "align-items:stretch",
+            "text-align:left", "padding:8px", "border-radius:12px",
+            "background:#170e08", "border:1px solid rgba(255,235,205,0.14)",
+            "cursor:pointer", "color:#fff8eb", "gap:6px"
+          ].join(";");
+
+          const cvs = document.createElement("canvas");
+          cvs.width = 220;
+          cvs.height = 132;
+          cvs.style.cssText = "width:100%;height:auto;border-radius:8px;display:block;background:#3a2416;";
+
+          if (typeof drawPiece === "function") {
+            drawPiece(cvs, 0, 1, 1, lv - 1, lv);
+          }
+
+          const label = document.createElement("div");
+          label.textContent = getLevelTitle(lv);
+          label.style.cssText = "font-size:12px;font-weight:600;line-height:1.3;color:#fff8eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+
+          card.appendChild(cvs);
+          card.appendChild(label);
+          card.addEventListener("click", () => selectLevel(lv));
+          grid.appendChild(card);
+        }
+
+        modal.style.display = "flex";
+      }
+
+      function bindLevelBox() {
+        const candidates = Array.from(document.querySelectorAll("div, button, span, section"));
+        const box = candidates.find((el) => {
+          const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+          return el.children.length <= 3 && /BÖLÜM/i.test(txt) && /\/\s*50/.test(txt);
+        });
+        if (box && !box.dataset.previewBound) {
+          box.dataset.previewBound = "1";
+          box.style.cursor = "pointer";
+          box.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openLevelPreview();
+          });
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindLevelBox);
+      } else {
+        bindLevelBox();
+      }
+      setTimeout(bindLevelBox, 400);
+    })();
 
     function setupLevel(lvl) {
       const cfg = getLevelConfig(lvl);
