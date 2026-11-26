@@ -1835,6 +1835,24 @@
       window.addEventListener("error", function (e) {
         alert("HATA: " + e.message + " | Satır: " + e.lineno);
       });
+window.addEventListener("unhandledrejection", function (e) {
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    "<div style='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;padding:10px;font-size:12px;'>PROMISE HATASI: " + (e.reason && e.reason.message ? e.reason.message : e.reason) + "</div>"
+  );
+});
+
+const _origRender = render;
+render = function () {
+  try {
+    return _origRender.apply(this, arguments);
+  } catch (err) {
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      "<div style='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;padding:10px;font-size:12px;'>RENDER HATASI: " + err.message + "</div>"
+    );
+  }
+};
 
     setupLevel(1);
   </script>
