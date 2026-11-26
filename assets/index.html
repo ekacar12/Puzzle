@@ -1832,6 +1832,9 @@
       SoundFX.tap();
       openModal("Reklam Seçenekleri", "Test ve yayın sürümlerinde reklam kaldırma seçeneği mağaza yapılandırmasıyla bağlanabilir.", false);
     });
+      window.addEventListener("error", function (e) {
+        alert("HATA: " + e.message + " | Satır: " + e.lineno);
+      });
 
     setupLevel(1);
   </script>
